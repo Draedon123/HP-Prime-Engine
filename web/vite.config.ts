@@ -14,7 +14,7 @@ export default defineConfig({
         base: "/HP-Prime-Engine",
       },
       adapter: adapter({
-        fallback: "src/app.html",
+        fallback: "index.html",
       }),
     }),
   ],
