@@ -1,1 +1,0 @@
-A game engine designed to make games for the HP Prime G2 Graphing Calculator. Consists of a compiler that compiles from JavaScript to HPPPL (HP Prime Programming Language) and an online web interface to aid with miscellaneous tasks, such as sprite creation.

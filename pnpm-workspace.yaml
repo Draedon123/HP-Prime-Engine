@@ -1,5 +1,0 @@
-packages:
-  - "web"
-  - "compiler"
-allowBuilds:
-  esbuild: true

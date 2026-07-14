@@ -1,0 +1,1 @@
+import{f as e,u as t}from"../chunks/CQRhvCI6.js";import"../chunks/xihTtKlq.js";var n=e(`<h1>HP Prime Engine Web Utilities</h1>`);function r(e){t(e,n())}export{r as component};

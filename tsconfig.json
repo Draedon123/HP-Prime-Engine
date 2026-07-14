@@ -1,5 +1,0 @@
-{
-  // for IDE intellisense
-  "files": [],
-  "references": [{ "path": "./compiler" }, { "path": "./web" }]
-}
