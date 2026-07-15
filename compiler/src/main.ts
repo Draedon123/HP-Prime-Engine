@@ -1,6 +1,9 @@
 import * as path from "node:path";
 import * as fs from "node:fs";
+import * as url from "node:url";
 
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "../../");
 
 const args = process.argv.slice(2);

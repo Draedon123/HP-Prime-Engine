@@ -13,7 +13,15 @@ export default defineConfig(
   js.configs.recommended,
   ts.configs.strict,
   {
-    languageOptions: { globals: globals.node },
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: {
+        projectService: {
+          allowDefaultProject: ["*.js"],
+        },
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       "no-undef": "off",
     },
