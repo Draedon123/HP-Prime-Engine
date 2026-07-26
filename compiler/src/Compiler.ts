@@ -10,9 +10,11 @@ class Compiler {
   );
 
   private readonly inputFilePath: string;
+  private readonly topLevelConstants: Record<string, string | number>;
 
   constructor(inputFilePath: string) {
     this.inputFilePath = inputFilePath;
+    this.topLevelConstants = {};
   }
 
   public compile(): string {
@@ -26,7 +28,61 @@ class Compiler {
 
     const parsedProgram = acorn.parse(fileContents, { ecmaVersion: "latest" });
 
-    return Compiler.BOILERPLATE;
+    for (const statement of parsedProgram.body) {
+      switch (statement.type) {
+        case "VariableDeclaration": {
+          this.handleTopLevelDeclarationStatement(statement);
+
+          break;
+        }
+
+        default: {
+          console.error(`Unsupported statement type ${statement.type}`);
+
+          break;
+        }
+      }
+    }
+
+    return Compiler.BOILERPLATE.replace(
+      "__CONSTANTS__",
+      this.serialiseTopLevelConstants()
+    );
+  }
+
+  private handleTopLevelDeclarationStatement(
+    statement: acorn.VariableDeclaration
+  ): void {
+    if (statement.kind === "const") {
+      for (const declaration of statement.declarations) {
+        if (declaration.init?.type !== "Literal") {
+          console.error(
+            `Unsupported declaration value type: ${declaration.init?.type}`
+          );
+          continue;
+        }
+
+        const value = declaration.init.value;
+
+        if (typeof value !== "string" && typeof value !== "number") {
+          console.error(`Unsupported const declaration value: ${typeof value}`);
+          continue;
+        }
+
+        this.topLevelConstants[(declaration.id as acorn.Identifier).name] =
+          value;
+      }
+    }
+  }
+
+  private serialiseTopLevelConstants(): string {
+    let serialised = "";
+
+    for (const [name, value] of Object.entries(this.topLevelConstants)) {
+      serialised += `CONST ${name} = ${value};\n`;
+    }
+
+    return serialised;
   }
 }
 

@@ -1,6 +1,8 @@
 CONST UPS = 30;
 CONST FRAME_TIME = 1 / UPS;
 
+__CONSTANTS__
+
 EXPORT MAIN()
 BEGIN
   LOCAL nextTick_ms = TICKS();

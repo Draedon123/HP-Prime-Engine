@@ -5,12 +5,16 @@ export default defineConfig({
   build: {
     target: "esnext",
     outDir: "build",
+    minify: false,
     rollupOptions: {
       input: "src/main.ts",
       external: ["hp_prime"],
+      treeshake: false,
       output: {
         format: "esm",
+        minify: false,
         entryFileNames: "build.js",
+        topLevelVar: false,
       },
     },
   },
