@@ -41,28 +41,41 @@ class Compiler {
 
     for (const statement of parsedProgram.body) {
       switch (statement.type) {
-        case "VariableDeclaration": {
-          this.handleVariableDeclaration(statement, "toplevel");
-
-          break;
-        }
-
         case "ImportDeclaration": {
           this.handleImportDeclaration(statement);
-
           break;
         }
-
-        case "ExpressionStatement": {
-          this.handleExpression(statement, "toplevel");
-
+        case "BlockStatement":
+        case "VariableDeclaration":
+        case "IfStatement":
+        case "ExpressionStatement":
+        case "EmptyStatement":
+        case "DebuggerStatement":
+        case "WithStatement":
+        case "ReturnStatement":
+        case "LabeledStatement":
+        case "BreakStatement":
+        case "ContinueStatement":
+        case "SwitchStatement":
+        case "ThrowStatement":
+        case "TryStatement":
+        case "WhileStatement":
+        case "DoWhileStatement":
+        case "ForStatement":
+        case "ForInStatement":
+        case "ForOfStatement":
+        case "FunctionDeclaration":
+        case "ClassDeclaration": {
+          this.handleStatement(statement, "toplevel");
           break;
         }
-
+        case "ExportNamedDeclaration":
+        case "ExportDefaultDeclaration":
+        case "ExportAllDeclaration":
         default: {
-          console.error(`Unsupported statement type ${statement.type}`);
-
-          break;
+          console.error(
+            `Unsupported statement or module declaration type "${statement.type}"`
+          );
         }
       }
     }
@@ -73,18 +86,59 @@ class Compiler {
     return this.topLevelCode + "\n" + Compiler.BOILERPLATE;
   }
 
+  private handleStatement(
+    statement: acorn.Statement,
+    target: CodeTargetLocation
+  ) {
+    switch (statement.type) {
+      case "VariableDeclaration": {
+        this.handleVariableDeclaration(statement, target);
+        break;
+      }
+      case "ExpressionStatement": {
+        this.handleExpression(statement, target);
+
+        break;
+      }
+      case "IfStatement": {
+        this.handleIf(statement, target);
+        break;
+      }
+      case "BlockStatement": {
+        this.handleBlock(statement, target);
+        break;
+      }
+      case "EmptyStatement":
+      case "DebuggerStatement":
+      case "WithStatement":
+      case "ReturnStatement":
+      case "LabeledStatement":
+      case "BreakStatement":
+      case "ContinueStatement":
+      case "SwitchStatement":
+      case "ThrowStatement":
+      case "TryStatement":
+      case "WhileStatement":
+      case "DoWhileStatement":
+      case "ForStatement":
+      case "ForInStatement":
+      case "ForOfStatement":
+      case "FunctionDeclaration":
+      case "ClassDeclaration":
+      default: {
+        console.error(`Unsupported statement type ${statement.type}`);
+
+        break;
+      }
+    }
+  }
+
   private handleVariableDeclaration(
     statement: acorn.VariableDeclaration,
     target: CodeTargetLocation
   ) {
-    for (const declaration of statement.declarations) {
-      const transpiled = this.transpileVariableDeclaration(
-        statement.kind,
-        declaration
-      );
-
-      this.write(transpiled + ";\n", target);
-    }
+    const transpiled = this.transpileVariableDeclaration(statement);
+    this.write(transpiled, target);
   }
 
   private handleImportDeclaration(statement: acorn.ImportDeclaration) {
@@ -137,6 +191,61 @@ class Compiler {
     }
   }
 
+  private handleIf(statement: acorn.IfStatement, target: CodeTargetLocation) {
+    const transpiled = this.transpileIf(statement);
+
+    if (transpiled !== null) {
+      this.write(transpiled + ";\n", target);
+    }
+  }
+
+  private handleBlock(
+    statement: acorn.BlockStatement,
+    target: CodeTargetLocation
+  ) {
+    const transpiled = this.transpileBlock(statement);
+
+    this.write(transpiled, target);
+  }
+
+  private transpileStatement(statement: acorn.Statement): string | null {
+    switch (statement.type) {
+      case "ExpressionStatement": {
+        return this.transpileExpression(statement.expression);
+      }
+      case "IfStatement": {
+        return this.transpileIf(statement);
+      }
+      case "VariableDeclaration": {
+        return this.transpileVariableDeclaration(statement);
+      }
+      case "BlockStatement": {
+        return this.transpileBlock(statement);
+      }
+      case "EmptyStatement":
+      case "DebuggerStatement":
+      case "WithStatement":
+      case "ReturnStatement":
+      case "LabeledStatement":
+      case "BreakStatement":
+      case "ContinueStatement":
+      case "SwitchStatement":
+      case "ThrowStatement":
+      case "TryStatement":
+      case "WhileStatement":
+      case "DoWhileStatement":
+      case "ForStatement":
+      case "ForInStatement":
+      case "ForOfStatement":
+      case "FunctionDeclaration":
+      case "ClassDeclaration":
+      default: {
+        console.error(`Unsupported statement type "${statement.type}"`);
+        return null;
+      }
+    }
+  }
+
   private transpilePattern(pattern: acorn.Pattern): string | null {
     switch (pattern.type) {
       case "Identifier": {
@@ -154,9 +263,28 @@ class Compiler {
   }
 
   private transpileVariableDeclaration(
+    declaration: acorn.VariableDeclaration
+  ): string {
+    let transpiledDeclaration = "";
+
+    for (const declarator of declaration.declarations) {
+      const transpiledDeclarator = this.transpileVariableDeclarator(
+        declaration.kind,
+        declarator
+      );
+
+      if (transpiledDeclarator !== null) {
+        transpiledDeclaration += transpiledDeclarator + ";\n";
+      }
+    }
+
+    return transpiledDeclaration;
+  }
+
+  private transpileVariableDeclarator(
     type: acorn.VariableDeclaration["kind"],
     statement: acorn.VariableDeclarator
-  ): string {
+  ): string | null {
     let transpiledValue: string | null = null;
 
     if (statement.init !== undefined && statement.init !== null) {
@@ -186,7 +314,7 @@ class Compiler {
     }
 
     if (declarationKeyword === null) {
-      return "";
+      return null;
     }
 
     switch (statement.id.type) {
@@ -206,7 +334,7 @@ class Compiler {
         console.error(
           `Unsupported variable declaration id type "${statement.id.type}"`
         );
-        return "";
+        return null;
       }
     }
   }
@@ -252,6 +380,36 @@ class Compiler {
         return null;
       }
     }
+  }
+
+  private transpileIf(statement: acorn.IfStatement): string | null {
+    const test = this.transpileExpression(statement.test);
+    const consequent = this.transpileStatement(statement.consequent);
+    const alternate = statement.alternate
+      ? this.transpileStatement(statement.alternate)
+      : undefined;
+
+    if (test === null || consequent === null || alternate === null) {
+      return null;
+    }
+
+    if (alternate === undefined) {
+      return `IF ${test} THEN\n${consequent}\nEND`;
+    } else {
+      return `IF ${test} THEN\n${consequent}\nELSE\n${alternate}\nEND`;
+    }
+  }
+
+  private transpileBlock(statement: acorn.BlockStatement): string {
+    if (statement.body.length === 0) {
+      return "";
+    }
+
+    const transpiled = statement.body
+      .map((statement) => this.transpileStatement(statement))
+      .filter((transpiled) => transpiled !== null);
+
+    return transpiled.join(";\n") + ";\n";
   }
 
   private transpileIdentifier(identifier: acorn.Identifier): string {
