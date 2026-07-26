@@ -208,6 +208,10 @@ importers:
   .: {}
 
   compiler:
+    dependencies:
+      acorn:
+        specifier: ^8.17.0
+        version: 8.17.0
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
