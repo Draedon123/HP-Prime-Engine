@@ -7,6 +7,7 @@ export default defineConfig({
     outDir: "build",
     rollupOptions: {
       input: "src/main.ts",
+      external: ["hp_prime"],
       output: {
         format: "esm",
         entryFileNames: "build.js",
@@ -15,7 +16,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      hp_prime: path.resolve(__dirname, "../compiler/types.d.ts"),
+      hp_prime: path.resolve(__dirname, "../compiler/src/index.d.ts"),
     },
   },
 });
