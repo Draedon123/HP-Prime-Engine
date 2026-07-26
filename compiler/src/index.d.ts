@@ -1,64 +1,25 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+export const G0: GraphicsObject;
+export const G1: GraphicsObject;
+export const G2: GraphicsObject;
+export const G3: GraphicsObject;
+export const G4: GraphicsObject;
+export const G5: GraphicsObject;
+export const G6: GraphicsObject;
+export const G7: GraphicsObject;
+export const G8: GraphicsObject;
+export const G9: GraphicsObject;
 
-export const on: () => void;
+export const COLOURS: Record<string, Colour>;
 
-export type EventListenerType = "keydown";
-export type KeydownEventListener = (
-  type: "keydown",
-  key: Key,
-  callback: (...args: any[]) => any
-) => void;
+type GraphicsObject = { __tag: "GraphicsObject" };
+type Colour = { __tag: "Colour" };
 
-export type Key =
-  `K_${KeyName}` | `KS_${KeyName}` | `KA_${KeyName}` | `KSA_${KeyName}`;
-export type KeyName =
-  | "0"
-  | "1"
-  | "2"
-  | "3"
-  | "4"
-  | "5"
-  | "6"
-  | "7"
-  | "8"
-  | "9"
-  | "Abc"
-  | "Alpha"
-  | "Apps"
-  | "Bpsk"
-  | "Comma"
-  | "Cos"
-  | "Div"
-  | "Dot"
-  | "Down"
-  | "Enter"
-  | "Home"
-  | "Left"
-  | "Right"
-  | "Ln"
-  | "Log"
-  | "Minus"
-  | "Neg"
-  | "Num"
-  | "On"
-  | "Plot"
-  | "Plus"
-  | "Power"
-  | "Sin"
-  | "Sq"
-  | "Symb"
-  | "Tan"
-  | "Up"
-  | "Vars"
-  | "View"
-  | "Xttn"
-  | "Help"
-  | "Menu"
-  | "Esc"
-  | "Cas"
-  | "Math"
-  | "Templ"
-  | "Paren"
-  | "Eex"
-  | "Mul"
-  | "Space";
+export function RECT_P(
+  graphicsObject: GraphicsObject,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  edgeColour: Colour,
+  fillColour: Colour
+): void;

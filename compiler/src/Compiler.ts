@@ -381,6 +381,9 @@ class Compiler {
       case "CallExpression": {
         return this.transpileCall(expression);
       }
+      case "MemberExpression": {
+        return this.transpileMember(expression);
+      }
       case "ThisExpression":
       case "ArrayExpression":
       case "ObjectExpression":
@@ -388,7 +391,6 @@ class Compiler {
       case "UnaryExpression":
       case "UpdateExpression":
       case "LogicalExpression":
-      case "MemberExpression":
       case "ConditionalExpression":
       case "NewExpression":
       case "SequenceExpression":
@@ -595,6 +597,55 @@ class Compiler {
     const transpiledArguments = args.join(", ");
 
     return `${callee}(${transpiledArguments})`;
+  }
+
+  private transpileMember(member: acorn.MemberExpression): string | null {
+    const parent =
+      member.object.type === "Super"
+        ? this.transpileSuper(member.object)
+        : this.transpileExpression(member.object);
+    const property =
+      member.property.type === "PrivateIdentifier"
+        ? this.transpilePrivateIdentifier(member.property)
+        : this.transpileExpression(member.property);
+
+    if (parent === null || property === null) {
+      return null;
+    }
+
+    let parentExpression = member.object;
+    let depth = 1;
+
+    while (parentExpression.type === "MemberExpression") {
+      parentExpression = parentExpression.object;
+      depth++;
+    }
+
+    if (
+      !this.namespaceImport.has(
+        (parentExpression.type === "Super"
+          ? this.transpileSuper(parentExpression)
+          : this.transpileExpression(parentExpression)) as string
+      )
+    ) {
+      console.error(
+        `Objects and properties are not supported on objects other than the hp_prime library and its exports`
+      );
+      return null;
+    }
+
+    if (depth === 1) {
+      return property;
+    }
+
+    if (depth == 2) {
+      if (parent === "COLOURS") {
+        // assume colour is hexadecimal
+        return property.replaceAll(/[";`]/g, "") + "h";
+      }
+    }
+
+    return null;
   }
 
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */

@@ -1,5 +1,4 @@
-function test(arg1, arg2) {
-  arg1 += arg2;
+import * as hp_prime from "hp_prime";
 
-  return arg1;
-}
+const colour = hp_prime.COLOURS["#ffffff"];
+hp_prime.RECT_P(hp_prime.G0, 10, 10, 20, 20, colour, colour);
