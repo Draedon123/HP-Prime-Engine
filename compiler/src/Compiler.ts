@@ -100,23 +100,20 @@ class Compiler {
   }
 
   private handleImportDeclarationStatement(statement: acorn.ImportDeclaration) {
+    if (statement.source.value !== "hp_prime") {
+      console.error("Module imports other than hp_prime are unsupported");
+
+      return;
+    }
+
     for (const specifier of statement.specifiers) {
       switch (specifier.type) {
         case "ImportNamespaceSpecifier": {
-          if (statement.source.value === "hp_prime") {
-            this.namespaceImport.add(specifier.local.name);
-          } else {
-            console.error("Module imports other than hp_prime are unsupported");
-          }
+          this.namespaceImport.add(specifier.local.name);
 
           break;
         }
         case "ImportSpecifier": {
-          if (statement.source.value !== "hp_prime") {
-            console.error("Module imports other than hp_prime are unsupported");
-            break;
-          }
-
           if (specifier.imported.type === "Identifier") {
             if (specifier.imported.name === "default") {
               this.namespaceImport.add(specifier.local.name);
@@ -132,11 +129,6 @@ class Compiler {
           break;
         }
         case "ImportDefaultSpecifier": {
-          if (statement.source.value !== "hp_prime") {
-            console.error("Module imports other than hp_prime are unsupported");
-            break;
-          }
-
           this.namespaceImport.add(specifier.local.name);
 
           break;
