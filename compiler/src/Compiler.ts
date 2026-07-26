@@ -108,10 +108,17 @@ class Compiler {
         this.handleBlock(statement, target);
         break;
       }
+      case "FunctionDeclaration": {
+        this.handleFunctionDeclaration(statement);
+        break;
+      }
+      case "ReturnStatement": {
+        this.handleReturn(statement, target);
+        break;
+      }
       case "EmptyStatement":
       case "DebuggerStatement":
       case "WithStatement":
-      case "ReturnStatement":
       case "LabeledStatement":
       case "BreakStatement":
       case "ContinueStatement":
@@ -123,7 +130,6 @@ class Compiler {
       case "ForStatement":
       case "ForInStatement":
       case "ForOfStatement":
-      case "FunctionDeclaration":
       case "ClassDeclaration":
       default: {
         console.error(`Unsupported statement type ${statement.type}`);
@@ -202,8 +208,25 @@ class Compiler {
   private handleBlock(
     statement: acorn.BlockStatement,
     target: CodeTargetLocation
-  ) {
+  ): void {
     const transpiled = this.transpileBlock(statement);
+
+    this.write(transpiled, target);
+  }
+
+  private handleFunctionDeclaration(
+    statement: acorn.FunctionDeclaration
+  ): void {
+    const transpiled = this.transpileFunctionDeclaration(statement);
+
+    this.write(transpiled, "toplevel");
+  }
+
+  private handleReturn(
+    statement: acorn.ReturnStatement,
+    target: CodeTargetLocation
+  ): void {
+    const transpiled = this.transpileReturn(statement);
 
     this.write(transpiled, target);
   }
@@ -222,10 +245,12 @@ class Compiler {
       case "BlockStatement": {
         return this.transpileBlock(statement);
       }
+      case "ReturnStatement": {
+        return this.transpileReturn(statement);
+      }
       case "EmptyStatement":
       case "DebuggerStatement":
       case "WithStatement":
-      case "ReturnStatement":
       case "LabeledStatement":
       case "BreakStatement":
       case "ContinueStatement":
@@ -412,6 +437,27 @@ class Compiler {
       .filter((transpiled) => transpiled !== null);
 
     return transpiled.join(";\n") + ";\n";
+  }
+
+  private transpileFunctionDeclaration(
+    statement: acorn.FunctionDeclaration
+  ): string {
+    const name = this.transpileIdentifier(statement.id);
+    const parameters = statement.params
+      .map((parameter) => this.transpilePattern(parameter))
+      .filter((parameter) => parameter !== null)
+      .join(",");
+    const body = this.transpileBlock(statement.body);
+
+    return `${name}(${parameters})\nBEGIN\n${body}\nEND;`;
+  }
+
+  private transpileReturn(statement: acorn.ReturnStatement): string {
+    const returnArgument = statement.argument
+      ? (this.transpileExpression(statement.argument) ?? "")
+      : "";
+
+    return `RETURN ${returnArgument}`;
   }
 
   private transpileIdentifier(identifier: acorn.Identifier): string {
