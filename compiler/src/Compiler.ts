@@ -3,6 +3,8 @@ import * as fs from "fs";
 import * as path from "path";
 import { __dirname } from "./globals";
 
+type CodeTargetLocation = "toplevel" | number;
+
 class Compiler {
   private static readonly BOILERPLATE: string = fs.readFileSync(
     path.resolve(__dirname, "boilerplate.hpppl"),
@@ -46,7 +48,13 @@ class Compiler {
         }
 
         case "ImportDeclaration": {
-          this.handleImportDeclarationStatement(statement);
+          this.handleImportDeclaration(statement);
+
+          break;
+        }
+
+        case "ExpressionStatement": {
+          this.handleExpression(statement, "toplevel");
 
           break;
         }
@@ -67,7 +75,7 @@ class Compiler {
 
   private handleVariableDeclaration(
     statement: acorn.VariableDeclaration,
-    target: "toplevel" | number
+    target: CodeTargetLocation
   ) {
     for (const declaration of statement.declarations) {
       const transpiled = this.transpileVariableDeclaration(
@@ -79,7 +87,7 @@ class Compiler {
     }
   }
 
-  private handleImportDeclarationStatement(statement: acorn.ImportDeclaration) {
+  private handleImportDeclaration(statement: acorn.ImportDeclaration) {
     if (statement.source.value !== "hp_prime") {
       console.error("Module imports other than hp_prime are unsupported");
 
@@ -117,6 +125,34 @@ class Compiler {
     }
   }
 
+  private handleExpression(
+    statement: acorn.ExpressionStatement,
+    target: CodeTargetLocation
+  ) {
+    const expression = statement.expression;
+    const transpiled = this.transpileExpression(expression);
+
+    if (transpiled !== null) {
+      this.write(transpiled + ";\n", target);
+    }
+  }
+
+  private transpilePattern(pattern: acorn.Pattern): string | null {
+    switch (pattern.type) {
+      case "Identifier": {
+        return this.transpileIdentifier(pattern);
+      }
+      case "MemberExpression":
+      case "ObjectPattern":
+      case "ArrayPattern":
+      case "RestElement":
+      case "AssignmentPattern": {
+        console.error(`Unsupported pattern "${pattern.type}"`);
+        return null;
+      }
+    }
+  }
+
   private transpileVariableDeclaration(
     type: acorn.VariableDeclaration["kind"],
     statement: acorn.VariableDeclarator
@@ -124,48 +160,7 @@ class Compiler {
     let transpiledValue: string | null = null;
 
     if (statement.init !== undefined && statement.init !== null) {
-      switch (statement.init.type) {
-        case "Literal": {
-          transpiledValue = this.transpileLiteral(statement.init);
-          break;
-        }
-
-        case "Identifier": {
-          transpiledValue = statement.init.type;
-          break;
-        }
-
-        case "ThisExpression":
-        case "ArrayExpression":
-        case "ObjectExpression":
-        case "FunctionExpression":
-        case "UnaryExpression":
-        case "UpdateExpression":
-        case "BinaryExpression":
-        case "AssignmentExpression":
-        case "LogicalExpression":
-        case "MemberExpression":
-        case "ConditionalExpression":
-        case "CallExpression":
-        case "NewExpression":
-        case "SequenceExpression":
-        case "ArrowFunctionExpression":
-        case "YieldExpression":
-        case "TemplateLiteral":
-        case "TaggedTemplateExpression":
-        case "ClassExpression":
-        case "MetaProperty":
-        case "AwaitExpression":
-        case "ChainExpression":
-        case "ImportExpression":
-        case "ParenthesizedExpression":
-        default: {
-          console.error(
-            `Unsupported expression type for variable declaration "${statement.init.type}"`
-          );
-          break;
-        }
-      }
+      transpiledValue = this.transpileExpression(statement.init);
     }
 
     let declarationKeyword: string | null = null;
@@ -216,6 +211,53 @@ class Compiler {
     }
   }
 
+  private transpileExpression(expression: acorn.Expression): string | null {
+    switch (expression.type) {
+      case "Identifier": {
+        return this.transpileIdentifier(expression);
+      }
+      case "Literal": {
+        return this.transpileLiteral(expression);
+      }
+      case "AssignmentExpression": {
+        return this.transpileAssignment(expression);
+      }
+      case "BinaryExpression": {
+        return this.transpileBinaryExpression(expression);
+      }
+      case "ThisExpression":
+      case "ArrayExpression":
+      case "ObjectExpression":
+      case "FunctionExpression":
+      case "UnaryExpression":
+      case "UpdateExpression":
+      case "LogicalExpression":
+      case "MemberExpression":
+      case "ConditionalExpression":
+      case "CallExpression":
+      case "NewExpression":
+      case "SequenceExpression":
+      case "ArrowFunctionExpression":
+      case "YieldExpression":
+      case "TemplateLiteral":
+      case "TaggedTemplateExpression":
+      case "ClassExpression":
+      case "MetaProperty":
+      case "AwaitExpression":
+      case "ChainExpression":
+      case "ImportExpression":
+      case "ParenthesizedExpression":
+      default: {
+        console.error(`Unsupported expression type "${expression.type}"`);
+        return null;
+      }
+    }
+  }
+
+  private transpileIdentifier(identifier: acorn.Identifier): string {
+    return identifier.name;
+  }
+
   private transpileLiteral(literal: acorn.Literal): string | null {
     switch (typeof literal.value) {
       case "string":
@@ -236,7 +278,109 @@ class Compiler {
     }
   }
 
-  private write(code: string, target: "toplevel" | number) {
+  private transpileAssignment(
+    assignment: acorn.AssignmentExpression
+  ): string | null {
+    const left = this.transpilePattern(assignment.left);
+    const right = this.transpileExpression(assignment.right);
+
+    if (left === null || right === null) {
+      return null;
+    }
+
+    switch (assignment.operator) {
+      case "=": {
+        return `${left} = ${right}`;
+      }
+      case "+=": {
+        return `${left} = ${left} + ${right}`;
+      }
+      case "-=": {
+        return `${left} = ${left} - ${right}`;
+      }
+      case "*=": {
+        return `${left} = ${left} * ${right}`;
+      }
+      case "/=": {
+        return `${left} = ${left} / ${right}`;
+      }
+      case "%=": {
+        return `${left} = ${left} MOD ${right}`;
+      }
+      case "<<=":
+      case ">>=":
+      case ">>>=":
+      case "|=":
+      case "^=":
+      case "&=":
+      case "**=":
+      case "||=":
+      case "&&=":
+      case "??=":
+      default: {
+        console.error(`Unsupported assignment operator ${assignment.operator}`);
+        return null;
+      }
+    }
+  }
+
+  private transpileBinaryExpression(
+    binary: acorn.BinaryExpression
+  ): string | null {
+    const left =
+      binary.left.type === "PrivateIdentifier"
+        ? this.transpilePrivateIdentifier(binary.left)
+        : this.transpileExpression(binary.left);
+    const right = this.transpileExpression(binary.right);
+
+    if (left === null || right === null) {
+      return null;
+    }
+
+    switch (binary.operator) {
+      case "+":
+      case "-":
+      case "*":
+      case "==":
+      case "!=":
+      case "<":
+      case ">":
+      case "/": {
+        return `${left} ${binary.operator} ${right}`;
+      }
+      case "%": {
+        return `${left} MOD ${right}`;
+      }
+      case "===":
+      case "!==":
+      case "<=":
+      case ">=":
+      case "<<":
+      case ">>":
+      case ">>>":
+      case "|":
+      case "^":
+      case "&":
+      case "in":
+      case "instanceof":
+      case "**":
+      default: {
+        console.error(
+          `Unsupported binary expression operator "${binary.operator}"`
+        );
+
+        return null;
+      }
+    }
+  }
+
+  private transpilePrivateIdentifier(
+    identifier: acorn.PrivateIdentifier
+  ): string {
+    return identifier.name;
+  }
+
+  private write(code: string, target: CodeTargetLocation) {
     if (target === "toplevel") {
       this.topLevelCode += code;
     } else {
