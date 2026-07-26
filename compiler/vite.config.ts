@@ -6,7 +6,7 @@ export default defineConfig({
     outDir: "build",
     rollupOptions: {
       input: "src/main.ts",
-      external: [/^node:/],
+      external: [/^node:/, "acorn"],
       output: {
         format: "cjs",
         entryFileNames: "compiler.cjs",

@@ -1,13 +1,12 @@
 import * as acorn from "acorn";
-import * as fs from "fs";
-import * as path from "path";
-import { __dirname } from "./globals";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 type CodeTargetLocation = "toplevel" | number;
 
 class Compiler {
   private static readonly BOILERPLATE: string = fs.readFileSync(
-    path.resolve(__dirname, "boilerplate.hpppl"),
+    path.resolve(__dirname, "../assets/boilerplate.hpppl"),
     { encoding: "utf8" }
   );
 
