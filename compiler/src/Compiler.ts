@@ -10,11 +10,15 @@ class Compiler {
   );
 
   private readonly inputFilePath: string;
+  private namedImports: Record<string, string>;
+  private namespaceImport: Set<string>;
   private readonly topLevelConstants: Record<string, string | number>;
 
   constructor(inputFilePath: string) {
     this.inputFilePath = inputFilePath;
     this.topLevelConstants = {};
+    this.namedImports = {};
+    this.namespaceImport = new Set();
   }
 
   public compile(): string {
@@ -26,12 +30,21 @@ class Compiler {
       encoding: "utf8",
     });
 
-    const parsedProgram = acorn.parse(fileContents, { ecmaVersion: "latest" });
+    const parsedProgram = acorn.parse(fileContents, {
+      ecmaVersion: "latest",
+      sourceType: "module",
+    });
 
     for (const statement of parsedProgram.body) {
       switch (statement.type) {
         case "VariableDeclaration": {
           this.handleTopLevelDeclarationStatement(statement);
+
+          break;
+        }
+
+        case "ImportDeclaration": {
+          this.handleImportDeclarationStatement(statement);
 
           break;
         }
@@ -43,6 +56,9 @@ class Compiler {
         }
       }
     }
+
+    console.log("Namespace Imports: ", this.namespaceImport);
+    console.log("Named Imports: ", this.namedImports);
 
     return Compiler.BOILERPLATE.replace(
       "__CONSTANTS__",
@@ -79,6 +95,52 @@ class Compiler {
         }
 
         this.topLevelConstants[declaration.id.name] = value;
+      }
+    }
+  }
+
+  private handleImportDeclarationStatement(statement: acorn.ImportDeclaration) {
+    for (const specifier of statement.specifiers) {
+      switch (specifier.type) {
+        case "ImportNamespaceSpecifier": {
+          if (statement.source.value === "hp_prime") {
+            this.namespaceImport.add(specifier.local.name);
+          } else {
+            console.error("Module imports other than hp_prime are unsupported");
+          }
+
+          break;
+        }
+        case "ImportSpecifier": {
+          if (statement.source.value !== "hp_prime") {
+            console.error("Module imports other than hp_prime are unsupported");
+            break;
+          }
+
+          if (specifier.imported.type === "Identifier") {
+            if (specifier.imported.name === "default") {
+              this.namespaceImport.add(specifier.local.name);
+            } else {
+              this.namedImports[specifier.local.name] = specifier.imported.name;
+            }
+          } else {
+            // this is the case: import { "string name" as alias } from "module"
+            this.namedImports[specifier.local.name] = specifier.imported
+              .value as string;
+          }
+
+          break;
+        }
+        case "ImportDefaultSpecifier": {
+          if (statement.source.value !== "hp_prime") {
+            console.error("Module imports other than hp_prime are unsupported");
+            break;
+          }
+
+          this.namespaceImport.add(specifier.local.name);
+
+          break;
+        }
       }
     }
   }
