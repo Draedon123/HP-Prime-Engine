@@ -353,6 +353,9 @@ class Compiler {
       case "BinaryExpression": {
         return this.transpileBinaryExpression(expression);
       }
+      case "CallExpression": {
+        return this.transpileCall(expression);
+      }
       case "ThisExpression":
       case "ArrayExpression":
       case "ObjectExpression":
@@ -362,7 +365,6 @@ class Compiler {
       case "LogicalExpression":
       case "MemberExpression":
       case "ConditionalExpression":
-      case "CallExpression":
       case "NewExpression":
       case "SequenceExpression":
       case "ArrowFunctionExpression":
@@ -530,6 +532,35 @@ class Compiler {
         return null;
       }
     }
+  }
+
+  private transpileCall(call: acorn.CallExpression): string | null {
+    const callee =
+      call.callee.type === "Super"
+        ? this.transpileSuper(call.callee)
+        : this.transpileExpression(call.callee);
+    const args = call.arguments
+      .map((argument) =>
+        argument.type === "SpreadElement"
+          ? this.transpileSpread(argument)
+          : this.transpileExpression(argument)
+      )
+      .filter((arg) => arg !== null);
+    const transpiledArguments = args.join(", ");
+
+    return `${callee}(${transpiledArguments})`;
+  }
+
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+  private transpileSuper(expression: acorn.Super): null {
+    console.error(`"Super" is unsupported`);
+    return null;
+  }
+
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+  private transpileSpread(spread: acorn.SpreadElement): null {
+    console.error(`"Spread" (...) is unsupported`);
+    return null;
   }
 
   private transpilePrivateIdentifier(
