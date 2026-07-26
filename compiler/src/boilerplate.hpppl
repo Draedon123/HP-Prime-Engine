@@ -1,26 +1,26 @@
-CONST UPS = 30;
-CONST FRAME_TIME = 1 / UPS;
+CONST UPS := 30;
+CONST FRAME_TIME := 1 / UPS;
 
 EXPORT MAIN()
 BEGIN
-  LOCAL nextTick_ms = TICKS();
+  LOCAL nextTick_ms := TICKS();
   RECT(#000000h);
 
   WHILE true DO
-    IF ISKEYDOWN(KEY_ESC) THEN
+    IF ISKEYDOWN(4) THEN
       KILL;
     END;
 
-    LOCAL tickTime_ms = TICKS();
-    nextTick_ms = nextTick_ms + FRAME_TIME * 1000;
-    LOCAL sleep_s = 0.001 * (nextTick_ms - tickTime_ms);
+    LOCAL tickTime_ms := TICKS();
+    nextTick_ms := nextTick_ms + FRAME_TIME * 1000;
+    LOCAL sleep_s := 0.001 * (nextTick_ms - tickTime_ms);
 
     if sleep_s > 0 THEN
       WAIT(sleep_s);
     ELSE
-      nextTick_ms = tickTime_ms;
+      nextTick_ms := tickTime_ms;
     END;
 
-    RUN();
+    ON_TICK();
   END;
 END;

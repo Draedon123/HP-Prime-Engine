@@ -11,6 +11,60 @@ class Compiler {
     { encoding: "utf8" }
   );
 
+  private static readonly KEYS: Record<import("./index").Key, number> = {
+    Apps: 0,
+    Symb: 1,
+    Up: 2,
+    Help: 3,
+    Esc: 4,
+    Home: 5,
+    Plot: 6,
+    Left: 7,
+    Right: 8,
+    View: 9,
+    CAS: 10,
+    Num: 11,
+    Down: 12,
+    Menu: 13,
+    Vars: 14,
+    Toolbox: 15,
+    Template: 16,
+    Define: 17,
+    Fraction: 18,
+    Backspace: 19,
+    Power: 20,
+    Sin: 21,
+    Cos: 22,
+    Tan: 23,
+    Ln: 24,
+    Log: 25,
+    Square: 26,
+    PlusMinus: 27,
+    Parentheses: 28,
+    Comma: 29,
+    Enter: 30,
+    EEX: 31,
+    7: 32,
+    8: 33,
+    9: 34,
+    Divide: 35,
+    Alpha: 36,
+    4: 37,
+    5: 38,
+    6: 39,
+    Multiply: 40,
+    Shift: 41,
+    1: 42,
+    2: 43,
+    3: 44,
+    Minus: 5,
+    On: 46,
+    0: 47,
+    Dot: 48,
+    Space: 49,
+    Plus: 50,
+  };
+
   private readonly inputFilePath: string;
   private namedImports: Record<string, string>;
   private namespaceImport: Set<string>;
@@ -79,9 +133,6 @@ class Compiler {
         }
       }
     }
-
-    console.log("Namespace Imports: ", this.namespaceImport);
-    console.log("Named Imports: ", this.namedImports);
 
     return this.topLevelCode + "\n" + Compiler.BOILERPLATE;
   }
@@ -347,7 +398,7 @@ class Compiler {
         if (transpiledValue === null) {
           return `${declarationKeyword} ${statement.id.name}`;
         } else {
-          return `${declarationKeyword} ${statement.id.name} = ${transpiledValue}`;
+          return `${declarationKeyword} ${statement.id.name} := ${transpiledValue}`;
         }
       }
       case "MemberExpression":
@@ -498,22 +549,22 @@ class Compiler {
 
     switch (assignment.operator) {
       case "=": {
-        return `${left} = ${right}`;
+        return `${left} := ${right}`;
       }
       case "+=": {
-        return `${left} = ${left} + ${right}`;
+        return `${left} := ${left} + ${right}`;
       }
       case "-=": {
-        return `${left} = ${left} - ${right}`;
+        return `${left} := ${left} - ${right}`;
       }
       case "*=": {
-        return `${left} = ${left} * ${right}`;
+        return `${left} := ${left} * ${right}`;
       }
       case "/=": {
-        return `${left} = ${left} / ${right}`;
+        return `${left} := ${left} / ${right}`;
       }
       case "%=": {
-        return `${left} = ${left} MOD ${right}`;
+        return `${left} := ${left} MOD ${right}`;
       }
       case "<<=":
       case ">>=":
@@ -641,7 +692,16 @@ class Compiler {
     if (depth == 2) {
       if (parent === "COLOURS") {
         // assume colour is hexadecimal
-        return property.replaceAll(/[";`]/g, "") + "h";
+        return property.replaceAll(/[";`]/g, "").toUpperCase() + "h";
+      }
+
+      if (parent === "KEYS") {
+        if (property in Compiler.KEYS) {
+          return Compiler.KEYS[property as import("./index").Key].toString();
+        } else {
+          console.error(`Unknown key "${property}"`);
+          return null;
+        }
       }
     }
 
