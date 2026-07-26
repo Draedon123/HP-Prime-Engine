@@ -59,6 +59,7 @@ class Compiler {
           console.error(
             `Unsupported declaration value type: ${declaration.init?.type}`
           );
+
           continue;
         }
 
@@ -69,8 +70,15 @@ class Compiler {
           continue;
         }
 
-        this.topLevelConstants[(declaration.id as acorn.Identifier).name] =
-          value;
+        if (declaration.id.type !== "Identifier") {
+          console.error(
+            `[handleTopLevelDeclarationStatement] | Expected declaration.id.type to be "Identifier"`
+          );
+
+          continue;
+        }
+
+        this.topLevelConstants[declaration.id.name] = value;
       }
     }
   }
