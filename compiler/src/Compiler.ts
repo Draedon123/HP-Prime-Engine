@@ -12,13 +12,15 @@ class Compiler {
   private readonly inputFilePath: string;
   private namedImports: Record<string, string>;
   private namespaceImport: Set<string>;
-  private readonly topLevelConstants: Record<string, string | number>;
+  private topLevelCode: string;
+  private transpiledFunctions: string[];
 
   constructor(inputFilePath: string) {
     this.inputFilePath = inputFilePath;
-    this.topLevelConstants = {};
     this.namedImports = {};
     this.namespaceImport = new Set();
+    this.topLevelCode = "";
+    this.transpiledFunctions = [];
   }
 
   public compile(): string {
@@ -38,7 +40,7 @@ class Compiler {
     for (const statement of parsedProgram.body) {
       switch (statement.type) {
         case "VariableDeclaration": {
-          this.handleTopLevelDeclarationStatement(statement);
+          this.handleVariableDeclaration(statement, "toplevel");
 
           break;
         }
@@ -60,42 +62,20 @@ class Compiler {
     console.log("Namespace Imports: ", this.namespaceImport);
     console.log("Named Imports: ", this.namedImports);
 
-    return Compiler.BOILERPLATE.replace(
-      "__CONSTANTS__",
-      this.serialiseTopLevelConstants()
-    );
+    return this.topLevelCode + "\n" + Compiler.BOILERPLATE;
   }
 
-  private handleTopLevelDeclarationStatement(
-    statement: acorn.VariableDeclaration
-  ): void {
-    if (statement.kind === "const") {
-      for (const declaration of statement.declarations) {
-        if (declaration.init?.type !== "Literal") {
-          console.error(
-            `Unsupported declaration value type: ${declaration.init?.type}`
-          );
+  private handleVariableDeclaration(
+    statement: acorn.VariableDeclaration,
+    target: "toplevel" | number
+  ) {
+    for (const declaration of statement.declarations) {
+      const transpiled = this.transpileVariableDeclaration(
+        statement.kind,
+        declaration
+      );
 
-          continue;
-        }
-
-        const value = declaration.init.value;
-
-        if (typeof value !== "string" && typeof value !== "number") {
-          console.error(`Unsupported const declaration value: ${typeof value}`);
-          continue;
-        }
-
-        if (declaration.id.type !== "Identifier") {
-          console.error(
-            `[handleTopLevelDeclarationStatement] | Expected declaration.id.type to be "Identifier"`
-          );
-
-          continue;
-        }
-
-        this.topLevelConstants[declaration.id.name] = value;
-      }
+      this.write(transpiled + ";\n", target);
     }
   }
 
@@ -137,14 +117,131 @@ class Compiler {
     }
   }
 
-  private serialiseTopLevelConstants(): string {
-    let serialised = "";
+  private transpileVariableDeclaration(
+    type: acorn.VariableDeclaration["kind"],
+    statement: acorn.VariableDeclarator
+  ): string {
+    let transpiledValue: string | null = null;
 
-    for (const [name, value] of Object.entries(this.topLevelConstants)) {
-      serialised += `CONST ${name} = ${value};\n`;
+    if (statement.init !== undefined && statement.init !== null) {
+      switch (statement.init.type) {
+        case "Literal": {
+          transpiledValue = this.transpileLiteral(statement.init);
+          break;
+        }
+
+        case "Identifier": {
+          transpiledValue = statement.init.type;
+          break;
+        }
+
+        case "ThisExpression":
+        case "ArrayExpression":
+        case "ObjectExpression":
+        case "FunctionExpression":
+        case "UnaryExpression":
+        case "UpdateExpression":
+        case "BinaryExpression":
+        case "AssignmentExpression":
+        case "LogicalExpression":
+        case "MemberExpression":
+        case "ConditionalExpression":
+        case "CallExpression":
+        case "NewExpression":
+        case "SequenceExpression":
+        case "ArrowFunctionExpression":
+        case "YieldExpression":
+        case "TemplateLiteral":
+        case "TaggedTemplateExpression":
+        case "ClassExpression":
+        case "MetaProperty":
+        case "AwaitExpression":
+        case "ChainExpression":
+        case "ImportExpression":
+        case "ParenthesizedExpression":
+        default: {
+          console.error(
+            `Unsupported expression type for variable declaration "${statement.init.type}"`
+          );
+          break;
+        }
+      }
     }
 
-    return serialised;
+    let declarationKeyword: string | null = null;
+
+    switch (type) {
+      case "let": {
+        declarationKeyword = "LOCAL";
+        break;
+      }
+
+      case "const": {
+        declarationKeyword = "CONST";
+        break;
+      }
+
+      case "var":
+      case "using":
+      case "await using":
+      default: {
+        console.error(`Unsupported variable declaration type "${type}"`);
+        break;
+      }
+    }
+
+    if (declarationKeyword === null) {
+      return "";
+    }
+
+    switch (statement.id.type) {
+      case "Identifier": {
+        if (transpiledValue === null) {
+          return `${declarationKeyword} ${statement.id.name}`;
+        } else {
+          return `${declarationKeyword} ${statement.id.name} = ${transpiledValue}`;
+        }
+      }
+      case "MemberExpression":
+      case "ObjectPattern":
+      case "ArrayPattern":
+      case "RestElement":
+      case "AssignmentPattern":
+      default: {
+        console.error(
+          `Unsupported variable declaration id type "${statement.id.type}"`
+        );
+        return "";
+      }
+    }
+  }
+
+  private transpileLiteral(literal: acorn.Literal): string | null {
+    switch (typeof literal.value) {
+      case "string":
+        return `"${literal.value}"`;
+      case "number":
+        return literal.value.toString();
+      case "boolean":
+        return literal.value ? "1" : "0";
+      case "bigint":
+      case "symbol":
+      case "undefined":
+      case "object":
+      case "function":
+      default: {
+        console.error(`Literal type "${typeof literal}" not supported`);
+        return null;
+      }
+    }
+  }
+
+  private write(code: string, target: "toplevel" | number) {
+    if (target === "toplevel") {
+      this.topLevelCode += code;
+    } else {
+      this.transpiledFunctions[target] += code;
+    }
   }
 }
 
