@@ -166,8 +166,14 @@ class Compiler {
         this.handleReturn(statement, target);
         break;
       }
-      case "EmptyStatement":
-      case "DebuggerStatement":
+      case "DebuggerStatement": {
+        this.handleDebugger(statement);
+        break;
+      }
+      case "EmptyStatement": {
+        this.handleEmpty(statement);
+        break;
+      }
       case "WithStatement":
       case "LabeledStatement":
       case "BreakStatement":
@@ -279,6 +285,16 @@ class Compiler {
     const transpiled = this.transpileReturn(statement);
 
     this.write(transpiled, target);
+  }
+
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+  private handleDebugger(statement: acorn.DebuggerStatement): void {
+    return;
+  }
+
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+  private handleEmpty(statement: acorn.EmptyStatement): void {
+    return;
   }
 
   private transpileStatement(statement: acorn.Statement): string | null {
