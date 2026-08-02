@@ -142,7 +142,6 @@ class Compiler {
       }
       case "ExpressionStatement": {
         this.handleExpression(statement);
-
         break;
       }
       case "IfStatement": {
@@ -213,7 +212,7 @@ class Compiler {
 
   private handleVariableDeclaration(statement: acorn.VariableDeclaration) {
     const transpiled = this.transpileVariableDeclaration(statement);
-    this.write(transpiled);
+    this.write(transpiled + ";\n");
   }
 
   private handleImportDeclaration(statement: acorn.ImportDeclaration) {
@@ -274,7 +273,7 @@ class Compiler {
   private handleBlock(statement: acorn.BlockStatement): void {
     const transpiled = this.transpileBlock(statement);
 
-    this.write(transpiled);
+    this.write(transpiled + ";\n");
   }
 
   private handleFunctionDeclaration(
@@ -282,13 +281,13 @@ class Compiler {
   ): void {
     const transpiled = this.transpileFunctionDeclaration(statement);
 
-    this.write(transpiled);
+    this.write(transpiled + ";\n");
   }
 
   private handleReturn(statement: acorn.ReturnStatement): void {
     const transpiled = this.transpileReturn(statement);
 
-    this.write(transpiled);
+    this.write(transpiled + ";\n");
   }
 
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
@@ -304,7 +303,7 @@ class Compiler {
   private handleTry(statement: acorn.TryStatement): void {
     const transpiled = this.transpileTry(statement);
 
-    this.write(transpiled);
+    this.write(transpiled + ";\n");
   }
 
   private handleWith(statement: acorn.WithStatement): void {
@@ -312,11 +311,7 @@ class Compiler {
       `The "with" statement is a deprecated JavaScript feature. The outer "with" statement will be dropped, leaving only the inside block`
     );
 
-    const transpiled = this.transpileStatement(statement.body);
-
-    if (transpiled !== null) {
-      this.write(transpiled);
-    }
+    this.handleStatement(statement.body);
   }
 
   private handleLabeled(statement: acorn.LabeledStatement): void {
@@ -338,7 +333,7 @@ class Compiler {
 
     const transpiled = this.transpileBreak(statement);
 
-    this.write(transpiled);
+    this.write(transpiled + ";\n");
   }
 
   private handleContinue(statement: acorn.ContinueStatement): void {
@@ -352,20 +347,20 @@ class Compiler {
 
     const transpiled = this.transpileContinue(statement);
 
-    this.write(transpiled);
+    this.write(transpiled + ";\n");
   }
 
   private handleSwitch(statement: acorn.SwitchStatement): void {
     const transpiled = this.transpileSwitchStatment(statement);
 
-    this.write(transpiled);
+    this.write(transpiled + ";\n");
   }
 
   private handleWhile(statement: acorn.WhileStatement): void {
     const transpiled = this.transpileWhile(statement);
 
     if (transpiled !== null) {
-      this.write(transpiled);
+      this.write(transpiled + ";\n");
     }
   }
 
@@ -428,7 +423,9 @@ class Compiler {
       case "Identifier": {
         return this.transpileIdentifier(pattern);
       }
-      case "MemberExpression":
+      case "MemberExpression": {
+        return this.transpileMember(pattern);
+      }
       case "ObjectPattern":
       case "ArrayPattern":
       case "RestElement":
@@ -451,7 +448,7 @@ class Compiler {
       );
 
       if (transpiledDeclarator !== null) {
-        transpiledDeclaration += transpiledDeclarator + ";\n";
+        transpiledDeclaration += transpiledDeclarator;
       }
     }
 
@@ -571,6 +568,7 @@ class Compiler {
 
   private transpileIf(statement: acorn.IfStatement): string | null {
     const test = this.transpileExpression(statement.test);
+
     const consequent = this.transpileStatement(statement.consequent);
     const alternate = statement.alternate
       ? this.transpileStatement(statement.alternate)
@@ -596,7 +594,7 @@ class Compiler {
       .map((statement) => this.transpileStatement(statement))
       .filter((transpiled) => transpiled !== null);
 
-    return transpiled.join(";\n");
+    return transpiled.join(";\n") + ";";
   }
 
   private transpileFunctionDeclaration(
@@ -609,7 +607,7 @@ class Compiler {
       .join(",");
     const body = this.transpileBlock(statement.body);
 
-    return `${name}(${parameters})\nBEGIN\n${body}\nEND;`;
+    return `${name}(${parameters})\nBEGIN\n${body}\nEND`;
   }
 
   private transpileReturn(statement: acorn.ReturnStatement): string {
@@ -629,7 +627,7 @@ class Compiler {
       ? this.transpileBlock(statement.finalizer)
       : "";
 
-    return `IFERR\n${tryBlock}\nTHEN\n${catchBlock}\nEND;\n${finallyBlock === "" ? "" : this.wrapInBlock(finallyBlock)}\n`;
+    return `IFERR\n${tryBlock}\nTHEN\n${catchBlock}\nEND${finallyBlock === "" ? "" : ";\n" + this.wrapInBlock(finallyBlock)}`;
   }
 
   private transpileCatch(statement: acorn.CatchClause): string {
@@ -648,11 +646,11 @@ class Compiler {
 
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
   private transpileBreak(statement: acorn.BreakStatement): string {
-    return "BREAK;\n";
+    return "BREAK";
   }
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
   private transpileContinue(statement: acorn.ContinueStatement): string {
-    return "CONTINUE;\n";
+    return "CONTINUE";
   }
 
   private transpileSwitchStatment(statement: acorn.SwitchStatement): string {
@@ -681,9 +679,9 @@ class Compiler {
     const transpiledCases = statement.cases
       .map((switchCase) => this.transpileSwitchCase(tempVariable, switchCase))
       .filter((transpiled) => transpiled !== null)
-      .join("\n");
+      .join(";\n");
 
-    return `${tempVariableDeclaration}\nCASE\n${transpiledCases}\nEND;\n`;
+    return `${tempVariableDeclaration}\nCASE\n${transpiledCases}\nEND`;
   }
 
   private transpileSwitchCase(
@@ -739,7 +737,7 @@ class Compiler {
         return null;
       }
 
-      return `IF ${testVariable} == ${test} THEN ${transpiledBody}; END;`;
+      return `IF ${testVariable} == ${test} THEN ${transpiledBody}; END`;
     }
   }
 
@@ -752,7 +750,7 @@ class Compiler {
 
     const body = this.transpileStatement(statement.body) ?? "";
 
-    return `WHILE ${test} DO\n${body}\nEND;`;
+    return `WHILE ${test} DO\n${body}\nEND`;
   }
 
   private transpileIdentifier(identifier: acorn.Identifier): string {
