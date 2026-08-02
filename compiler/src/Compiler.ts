@@ -171,7 +171,10 @@ class Compiler {
         this.handleTry(statement);
         break;
       }
-      case "WithStatement":
+      case "WithStatement": {
+        this.handleWith(statement);
+        break;
+      }
       case "LabeledStatement":
       case "BreakStatement":
       case "ContinueStatement":
@@ -285,6 +288,18 @@ class Compiler {
     const transpiled = this.transpileTry(statement);
 
     this.write(transpiled);
+  }
+
+  private handleWith(statement: acorn.WithStatement): void {
+    console.warn(
+      `The "with" statement is a deprecated JavaScript feature. The outer "with" statement will be dropped, leaving only the inside block`
+    );
+
+    const transpiled = this.transpileStatement(statement.body);
+
+    if (transpiled !== null) {
+      this.write(transpiled);
+    }
   }
 
   private transpileStatement(statement: acorn.Statement): string | null {
