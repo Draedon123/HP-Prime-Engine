@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 type GraphicsObject = { __tag: "GraphicsObject" };
 export const G0: GraphicsObject;
 export const G1: GraphicsObject;
@@ -81,5 +83,7 @@ export function RECT_P(
 // Arithmetic
 export function MIN(x: number, y: number): number;
 export function MAX(x: number, y: number): number;
+
+export function REDIM(array: any[], dimension: number): void;
 
 export function ISKEYDOWN(key: number): boolean;
