@@ -537,6 +537,9 @@ class Compiler {
       case "ArrayExpression": {
         return this.transpileArrayExpression(expression);
       }
+      case "ParenthesizedExpression": {
+        return this.transpileParenthesisedExpression(expression);
+      }
       case "ThisExpression":
       case "ObjectExpression":
       case "FunctionExpression":
@@ -555,7 +558,6 @@ class Compiler {
       case "AwaitExpression":
       case "ChainExpression":
       case "ImportExpression":
-      case "ParenthesizedExpression":
       default: {
         console.error(`Unsupported expression type "${expression.type}"`);
         return null;
@@ -842,10 +844,18 @@ class Compiler {
       case "<":
       case ">":
       case "/": {
-        return `${left} ${binary.operator} ${right}`;
+        const processedLeft =
+          binary.left.type === "BinaryExpression" ? `(${left})` : left;
+        const processedRight =
+          binary.right.type === "BinaryExpression" ? `(${right})` : right;
+        return `${processedLeft} ${binary.operator} ${processedRight}`;
       }
       case "%": {
-        return `${left} MOD ${right}`;
+        const processedLeft =
+          binary.left.type === "BinaryExpression" ? `(${left})` : left;
+        const processedRight =
+          binary.right.type === "BinaryExpression" ? `(${right})` : right;
+        return `${processedLeft} MOD ${processedRight}`;
       }
       case "===":
       case "!==":
@@ -957,6 +967,18 @@ class Compiler {
       .join(",");
 
     return `[${transpiledElements}]`;
+  }
+
+  private transpileParenthesisedExpression(
+    expression: acorn.ParenthesizedExpression
+  ): string | null {
+    const transpiledExpression = this.transpileExpression(expression);
+
+    if (transpiledExpression === null) {
+      return null;
+    }
+
+    return `(${transpiledExpression})`;
   }
 
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
