@@ -2,8 +2,6 @@ import * as acorn from "acorn";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-type CodeTargetLocation = "toplevel" | number;
-
 class Compiler {
   private static readonly BOILERPLATE: string = fs.readFileSync(
     path.resolve(__dirname, "../assets/boilerplate.hpppl"),
@@ -68,14 +66,12 @@ class Compiler {
   private namedImports: Record<string, string>;
   private namespaceImport: Set<string>;
   private topLevelCode: string;
-  private transpiledFunctions: string[];
 
   constructor(inputFilePath: string) {
     this.inputFilePath = inputFilePath;
     this.namedImports = {};
     this.namespaceImport = new Set();
     this.topLevelCode = "";
-    this.transpiledFunctions = [];
   }
 
   public compile(): string {
@@ -119,7 +115,7 @@ class Compiler {
         case "ForOfStatement":
         case "FunctionDeclaration":
         case "ClassDeclaration": {
-          this.handleStatement(statement, "toplevel");
+          this.handleStatement(statement);
           break;
         }
         case "ExportNamedDeclaration":
@@ -136,26 +132,23 @@ class Compiler {
     return this.topLevelCode + "\n" + Compiler.BOILERPLATE;
   }
 
-  private handleStatement(
-    statement: acorn.Statement,
-    target: CodeTargetLocation
-  ) {
+  private handleStatement(statement: acorn.Statement) {
     switch (statement.type) {
       case "VariableDeclaration": {
-        this.handleVariableDeclaration(statement, target);
+        this.handleVariableDeclaration(statement);
         break;
       }
       case "ExpressionStatement": {
-        this.handleExpression(statement, target);
+        this.handleExpression(statement);
 
         break;
       }
       case "IfStatement": {
-        this.handleIf(statement, target);
+        this.handleIf(statement);
         break;
       }
       case "BlockStatement": {
-        this.handleBlock(statement, target);
+        this.handleBlock(statement);
         break;
       }
       case "FunctionDeclaration": {
@@ -163,7 +156,7 @@ class Compiler {
         break;
       }
       case "ReturnStatement": {
-        this.handleReturn(statement, target);
+        this.handleReturn(statement);
         break;
       }
       case "DebuggerStatement": {
@@ -174,13 +167,16 @@ class Compiler {
         this.handleEmpty(statement);
         break;
       }
+      case "TryStatement": {
+        this.handleTry(statement);
+        break;
+      }
       case "WithStatement":
       case "LabeledStatement":
       case "BreakStatement":
       case "ContinueStatement":
       case "SwitchStatement":
       case "ThrowStatement":
-      case "TryStatement":
       case "WhileStatement":
       case "DoWhileStatement":
       case "ForStatement":
@@ -195,12 +191,9 @@ class Compiler {
     }
   }
 
-  private handleVariableDeclaration(
-    statement: acorn.VariableDeclaration,
-    target: CodeTargetLocation
-  ) {
+  private handleVariableDeclaration(statement: acorn.VariableDeclaration) {
     const transpiled = this.transpileVariableDeclaration(statement);
-    this.write(transpiled, target);
+    this.write(transpiled);
   }
 
   private handleImportDeclaration(statement: acorn.ImportDeclaration) {
@@ -241,33 +234,27 @@ class Compiler {
     }
   }
 
-  private handleExpression(
-    statement: acorn.ExpressionStatement,
-    target: CodeTargetLocation
-  ) {
+  private handleExpression(statement: acorn.ExpressionStatement) {
     const expression = statement.expression;
     const transpiled = this.transpileExpression(expression);
 
     if (transpiled !== null) {
-      this.write(transpiled + ";\n", target);
+      this.write(transpiled + ";\n");
     }
   }
 
-  private handleIf(statement: acorn.IfStatement, target: CodeTargetLocation) {
+  private handleIf(statement: acorn.IfStatement) {
     const transpiled = this.transpileIf(statement);
 
     if (transpiled !== null) {
-      this.write(transpiled + ";\n", target);
+      this.write(transpiled + ";\n");
     }
   }
 
-  private handleBlock(
-    statement: acorn.BlockStatement,
-    target: CodeTargetLocation
-  ): void {
+  private handleBlock(statement: acorn.BlockStatement): void {
     const transpiled = this.transpileBlock(statement);
 
-    this.write(transpiled, target);
+    this.write(transpiled);
   }
 
   private handleFunctionDeclaration(
@@ -275,16 +262,13 @@ class Compiler {
   ): void {
     const transpiled = this.transpileFunctionDeclaration(statement);
 
-    this.write(transpiled, "toplevel");
+    this.write(transpiled);
   }
 
-  private handleReturn(
-    statement: acorn.ReturnStatement,
-    target: CodeTargetLocation
-  ): void {
+  private handleReturn(statement: acorn.ReturnStatement): void {
     const transpiled = this.transpileReturn(statement);
 
-    this.write(transpiled, target);
+    this.write(transpiled);
   }
 
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
@@ -295,6 +279,12 @@ class Compiler {
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
   private handleEmpty(statement: acorn.EmptyStatement): void {
     return;
+  }
+
+  private handleTry(statement: acorn.TryStatement): void {
+    const transpiled = this.transpileTry(statement);
+
+    this.write(transpiled);
   }
 
   private transpileStatement(statement: acorn.Statement): string | null {
@@ -314,6 +304,9 @@ class Compiler {
       case "ReturnStatement": {
         return this.transpileReturn(statement);
       }
+      case "TryStatement": {
+        return this.transpileTry(statement);
+      }
       case "EmptyStatement":
       case "DebuggerStatement":
       case "WithStatement":
@@ -322,7 +315,6 @@ class Compiler {
       case "ContinueStatement":
       case "SwitchStatement":
       case "ThrowStatement":
-      case "TryStatement":
       case "WhileStatement":
       case "DoWhileStatement":
       case "ForStatement":
@@ -504,7 +496,7 @@ class Compiler {
       .map((statement) => this.transpileStatement(statement))
       .filter((transpiled) => transpiled !== null);
 
-    return transpiled.join(";\n") + ";\n";
+    return transpiled.join(";\n");
   }
 
   private transpileFunctionDeclaration(
@@ -526,6 +518,32 @@ class Compiler {
       : "";
 
     return `RETURN ${returnArgument}`;
+  }
+
+  private transpileTry(statement: acorn.TryStatement): string {
+    const tryBlock = this.transpileBlock(statement.block);
+    const catchBlock = statement.handler
+      ? this.transpileCatch(statement.handler)
+      : "";
+    const finallyBlock = statement.finalizer
+      ? this.transpileBlock(statement.finalizer)
+      : "";
+
+    return `IFERR\n${tryBlock}\nTHEN\n${catchBlock}\nEND;\n${finallyBlock === "" ? "" : this.wrapInBlock(finallyBlock)}\n`;
+  }
+
+  private transpileCatch(statement: acorn.CatchClause): string {
+    if (statement.param) {
+      const parameter = this.transpilePattern(statement.param);
+
+      if (parameter !== "_") {
+        console.warn(
+          `"Try-catch" error parameter "${parameter}" will be removed in compilation. Ensure your code does not reference it.`
+        );
+      }
+    }
+
+    return this.transpileBlock(statement.body);
   }
 
   private transpileIdentifier(identifier: acorn.Identifier): string {
@@ -581,6 +599,7 @@ class Compiler {
       case "%=": {
         return `${left} := ${left} MOD ${right}`;
       }
+
       case "<<=":
       case ">>=":
       case ">>>=":
@@ -741,12 +760,12 @@ class Compiler {
     return identifier.name;
   }
 
-  private write(code: string, target: CodeTargetLocation) {
-    if (target === "toplevel") {
-      this.topLevelCode += code;
-    } else {
-      this.transpiledFunctions[target] += code;
-    }
+  private wrapInBlock(code: string): string {
+    return `IF 1 THEN\n${code}\nEND;\n`;
+  }
+
+  private write(code: string) {
+    this.topLevelCode += code;
   }
 }
 
