@@ -401,6 +401,9 @@ class Compiler {
       case "FunctionDeclaration": {
         return this.transpileFunctionDeclaration(statement);
       }
+      case "WhileStatement": {
+        return this.transpileWhile(statement);
+      }
       case "EmptyStatement":
       case "DebuggerStatement":
       case "WithStatement":
@@ -408,7 +411,6 @@ class Compiler {
         return null;
       }
       case "ThrowStatement":
-      case "WhileStatement":
       case "DoWhileStatement":
       case "ForStatement":
       case "ForInStatement":
@@ -540,10 +542,12 @@ class Compiler {
       case "ParenthesizedExpression": {
         return this.transpileParenthesisedExpression(expression);
       }
+      case "UnaryExpression": {
+        return this.transpileUnaryExpression(expression);
+      }
       case "ThisExpression":
       case "ObjectExpression":
       case "FunctionExpression":
-      case "UnaryExpression":
       case "UpdateExpression":
       case "LogicalExpression":
       case "ConditionalExpression":
@@ -822,6 +826,33 @@ class Compiler {
     }
   }
 
+  private transpileUnaryExpression(
+    expression: acorn.UnaryExpression
+  ): string | null {
+    switch (expression.operator) {
+      case "-":
+      case "+": {
+        const transpiledArgument = this.transpileExpression(
+          expression.argument
+        );
+
+        if (transpiledArgument === null) {
+          return null;
+        }
+
+        return `${expression.operator}${transpiledArgument}`;
+      }
+      case "!":
+      case "~":
+      case "typeof":
+      case "void":
+      case "delete": {
+        console.error(`Unsupported unary operator "${expression.operator}"`);
+        return null;
+      }
+    }
+  }
+
   private transpileBinaryExpression(
     binary: acorn.BinaryExpression
   ): string | null {
@@ -843,6 +874,8 @@ class Compiler {
       case "!=":
       case "<":
       case ">":
+      case "<=":
+      case ">=":
       case "/": {
         const processedLeft =
           binary.left.type === "BinaryExpression" ? `(${left})` : left;
@@ -859,8 +892,6 @@ class Compiler {
       }
       case "===":
       case "!==":
-      case "<=":
-      case ">=":
       case "<<":
       case ">>":
       case ">>>":
