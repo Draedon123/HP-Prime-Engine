@@ -193,8 +193,11 @@ class Compiler {
         this.handleSwitch(statement);
         break;
       }
+      case "WhileStatement": {
+        this.handleWhile(statement);
+        break;
+      }
       case "ThrowStatement":
-      case "WhileStatement":
       case "DoWhileStatement":
       case "ForStatement":
       case "ForInStatement":
@@ -356,6 +359,14 @@ class Compiler {
     const transpiled = this.transpileSwitchStatment(statement);
 
     this.write(transpiled);
+  }
+
+  private handleWhile(statement: acorn.WhileStatement): void {
+    const transpiled = this.transpileWhile(statement);
+
+    if (transpiled !== null) {
+      this.write(transpiled);
+    }
   }
 
   private transpileStatement(statement: acorn.Statement): string | null {
@@ -724,6 +735,18 @@ class Compiler {
 
       return `IF ${testVariable} == ${test} THEN ${transpiledBody}; END;`;
     }
+  }
+
+  private transpileWhile(statement: acorn.WhileStatement): string | null {
+    const test = this.transpileExpression(statement.test);
+
+    if (test === null) {
+      return null;
+    }
+
+    const body = this.transpileStatement(statement.body) ?? "";
+
+    return `WHILE ${test} DO\n${body}\nEND;`;
   }
 
   private transpileIdentifier(identifier: acorn.Identifier): string {
