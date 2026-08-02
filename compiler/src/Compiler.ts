@@ -179,8 +179,14 @@ class Compiler {
         this.handleLabeled(statement);
         break;
       }
-      case "BreakStatement":
-      case "ContinueStatement":
+      case "BreakStatement": {
+        this.handleBreak(statement);
+        break;
+      }
+      case "ContinueStatement": {
+        this.handleContinue(statement);
+        break;
+      }
       case "SwitchStatement":
       case "ThrowStatement":
       case "WhileStatement":
@@ -311,6 +317,34 @@ class Compiler {
     );
 
     this.handleStatement(statement.body);
+  }
+
+  private handleBreak(statement: acorn.BreakStatement): void {
+    if (statement.label) {
+      const label = this.transpileIdentifier(statement.label);
+
+      console.warn(
+        `Specifically breaking from label "${label}" is not supported`
+      );
+    }
+
+    const transpiled = this.transpileBreak(statement);
+
+    this.write(transpiled);
+  }
+
+  private handleContinue(statement: acorn.ContinueStatement): void {
+    if (statement.label) {
+      const label = this.transpileIdentifier(statement.label);
+
+      console.warn(
+        `Specifically continuing from label "${label}" is not supported`
+      );
+    }
+
+    const transpiled = this.transpileContinue(statement);
+
+    this.write(transpiled);
   }
 
   private transpileStatement(statement: acorn.Statement): string | null {
@@ -570,6 +604,15 @@ class Compiler {
     }
 
     return this.transpileBlock(statement.body);
+  }
+
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+  private transpileBreak(statement: acorn.BreakStatement): string {
+    return "BREAK;\n";
+  }
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+  private transpileContinue(statement: acorn.ContinueStatement): string {
+    return "CONTINUE;\n";
   }
 
   private transpileIdentifier(identifier: acorn.Identifier): string {
