@@ -523,8 +523,10 @@ class Compiler {
       case "MemberExpression": {
         return this.transpileMember(expression);
       }
+      case "ArrayExpression": {
+        return this.transpileArrayExpression(expression);
+      }
       case "ThisExpression":
-      case "ArrayExpression":
       case "ObjectExpression":
       case "FunctionExpression":
       case "UnaryExpression":
@@ -877,7 +879,7 @@ class Compiler {
     }
 
     let parentExpression = member.object;
-    let depth = 1;
+    let depth = 0;
 
     while (parentExpression.type === "MemberExpression") {
       parentExpression = parentExpression.object;
@@ -891,33 +893,47 @@ class Compiler {
           : this.transpileExpression(parentExpression)) as string
       )
     ) {
-      console.error(
-        `Objects and properties are not supported on objects other than the hp_prime library and its exports`
-      );
-      return null;
+      return `${parent}[${property}]`;
     }
 
-    if (depth === 1) {
+    if (depth === 0) {
       return property;
     }
 
-    if (depth == 2) {
-      if (parent === "COLOURS") {
-        // assume colour is hexadecimal
-        return property.replaceAll(/[";`]/g, "").toUpperCase() + "h";
-      }
+    if (depth == 1) {
+      switch (parent) {
+        case "COLOURS": {
+          // assume colour is hexadecimal
+          return property.replaceAll(/[";`]/g, "").toUpperCase() + "h";
+        }
 
-      if (parent === "KEYS") {
-        if (property in Compiler.KEYS) {
-          return Compiler.KEYS[property as import("./index").Key].toString();
-        } else {
-          console.error(`Unknown key "${property}"`);
-          return null;
+        case "KEYS": {
+          if (property in Compiler.KEYS) {
+            return Compiler.KEYS[property as import("./index").Key].toString();
+          } else {
+            console.error(`Unknown key "${property}"`);
+            return null;
+          }
         }
       }
     }
 
     return null;
+  }
+
+  private transpileArrayExpression(expression: acorn.ArrayExpression): string {
+    const transpiledElements = expression.elements
+      .map((element) =>
+        element === null
+          ? null
+          : element.type === "SpreadElement"
+            ? this.transpileSpread(element)
+            : this.transpileExpression(element)
+      )
+      .filter((element) => element !== null)
+      .join(",");
+
+    return `[${transpiledElements}]`;
   }
 
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
