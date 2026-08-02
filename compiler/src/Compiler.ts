@@ -175,7 +175,10 @@ class Compiler {
         this.handleWith(statement);
         break;
       }
-      case "LabeledStatement":
+      case "LabeledStatement": {
+        this.handleLabeled(statement);
+        break;
+      }
       case "BreakStatement":
       case "ContinueStatement":
       case "SwitchStatement":
@@ -300,6 +303,14 @@ class Compiler {
     if (transpiled !== null) {
       this.write(transpiled);
     }
+  }
+
+  private handleLabeled(statement: acorn.LabeledStatement): void {
+    console.warn(
+      `Labelled "break" and "continue" statements are not supported`
+    );
+
+    this.handleStatement(statement.body);
   }
 
   private transpileStatement(statement: acorn.Statement): string | null {
