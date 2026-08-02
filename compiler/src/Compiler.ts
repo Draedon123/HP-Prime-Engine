@@ -66,12 +66,14 @@ class Compiler {
   private namedImports: Record<string, string>;
   private namespaceImport: Set<string>;
   private topLevelCode: string;
+  private numSwitches: number;
 
   constructor(inputFilePath: string) {
     this.inputFilePath = inputFilePath;
     this.namedImports = {};
     this.namespaceImport = new Set();
     this.topLevelCode = "";
+    this.numSwitches = 0;
   }
 
   public compile(): string {
@@ -187,7 +189,10 @@ class Compiler {
         this.handleContinue(statement);
         break;
       }
-      case "SwitchStatement":
+      case "SwitchStatement": {
+        this.handleSwitch(statement);
+        break;
+      }
       case "ThrowStatement":
       case "WhileStatement":
       case "DoWhileStatement":
@@ -347,6 +352,12 @@ class Compiler {
     this.write(transpiled);
   }
 
+  private handleSwitch(statement: acorn.SwitchStatement): void {
+    const transpiled = this.transpileSwitchStatment(statement);
+
+    this.write(transpiled);
+  }
+
   private transpileStatement(statement: acorn.Statement): string | null {
     switch (statement.type) {
       case "ExpressionStatement": {
@@ -367,20 +378,30 @@ class Compiler {
       case "TryStatement": {
         return this.transpileTry(statement);
       }
+      case "BreakStatement": {
+        return this.transpileBreak(statement);
+      }
+      case "ContinueStatement": {
+        return this.transpileContinue(statement);
+      }
+      case "SwitchStatement": {
+        return this.transpileSwitchStatment(statement);
+      }
+      case "FunctionDeclaration": {
+        return this.transpileFunctionDeclaration(statement);
+      }
       case "EmptyStatement":
       case "DebuggerStatement":
       case "WithStatement":
-      case "LabeledStatement":
-      case "BreakStatement":
-      case "ContinueStatement":
-      case "SwitchStatement":
+      case "LabeledStatement": {
+        return null;
+      }
       case "ThrowStatement":
       case "WhileStatement":
       case "DoWhileStatement":
       case "ForStatement":
       case "ForInStatement":
       case "ForOfStatement":
-      case "FunctionDeclaration":
       case "ClassDeclaration":
       default: {
         console.error(`Unsupported statement type "${statement.type}"`);
@@ -613,6 +634,94 @@ class Compiler {
   /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
   private transpileContinue(statement: acorn.ContinueStatement): string {
     return "CONTINUE;\n";
+  }
+
+  private transpileSwitchStatment(statement: acorn.SwitchStatement): string {
+    const tempVariable = `__temp_switch__${this.numSwitches++}`;
+    const tempVariableDeclaration = this.transpileVariableDeclaration({
+      type: "VariableDeclaration",
+      start: 0,
+      end: 0,
+      kind: "const",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          start: 0,
+          end: 0,
+          id: {
+            type: "Identifier",
+            start: 0,
+            end: 0,
+            name: tempVariable,
+          },
+          init: statement.discriminant,
+        },
+      ],
+    });
+
+    const transpiledCases = statement.cases
+      .map((switchCase) => this.transpileSwitchCase(tempVariable, switchCase))
+      .filter((transpiled) => transpiled !== null)
+      .join("\n");
+
+    return `${tempVariableDeclaration}\nCASE\n${transpiledCases}\nEND;\n`;
+  }
+
+  private transpileSwitchCase(
+    testVariable: string,
+    switchCase: acorn.SwitchCase
+  ): string | null {
+    const transpiledBodyStatements: string[] = [];
+
+    for (let i = 0; i < switchCase.consequent.length; i++) {
+      const statement = switchCase.consequent[i];
+
+      switch (statement.type) {
+        case "BlockStatement": {
+          for (let j = 0; j < statement.body.length; j++) {
+            const subStatement = statement.body[j];
+
+            if (subStatement.type === "BreakStatement") {
+              if (j !== statement.body.length - 1) {
+                console.warn(
+                  '"Break" statements in a "switch" case are only supported at the end of the block. For example, you will need to rewrite if(x){break}y as if(x){}{y}'
+                );
+              }
+
+              statement.body.splice(j, 1);
+              j--;
+            }
+          }
+
+          const transpiled = this.transpileBlock(statement);
+          transpiledBodyStatements.push(transpiled);
+
+          break;
+        }
+        default: {
+          console.error("Switch cases must be in blocks. I.e., case x: {...}");
+
+          break;
+        }
+      }
+    }
+
+    const transpiledBody = transpiledBodyStatements.join("\n");
+
+    if (switchCase.test === null) {
+      // default case
+      return `DEFAULT ${transpiledBody};`;
+    } else {
+      const test = switchCase.test
+        ? this.transpileExpression(switchCase.test)
+        : null;
+
+      if (test === null) {
+        return null;
+      }
+
+      return `IF ${testVariable} == ${test} THEN ${transpiledBody}; END;`;
+    }
   }
 
   private transpileIdentifier(identifier: acorn.Identifier): string {
