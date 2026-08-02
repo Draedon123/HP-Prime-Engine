@@ -78,4 +78,8 @@ export function RECT_P(
   fillColour: Colour
 ): void;
 
+// Arithmetic
+export function MIN(x: number, y: number): number;
+export function MAX(x: number, y: number): number;
+
 export function ISKEYDOWN(key: number): boolean;
