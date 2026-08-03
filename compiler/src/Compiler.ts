@@ -868,6 +868,11 @@ class Compiler {
       return null;
     }
 
+    const processedLeft =
+      binary.left.type === "BinaryExpression" ? `(${left})` : left;
+    const processedRight =
+      binary.right.type === "BinaryExpression" ? `(${right})` : right;
+
     switch (binary.operator) {
       case "+":
       case "-":
@@ -879,21 +884,19 @@ class Compiler {
       case "<=":
       case ">=":
       case "/": {
-        const processedLeft =
-          binary.left.type === "BinaryExpression" ? `(${left})` : left;
-        const processedRight =
-          binary.right.type === "BinaryExpression" ? `(${right})` : right;
         return `${processedLeft} ${binary.operator} ${processedRight}`;
       }
       case "%": {
-        const processedLeft =
-          binary.left.type === "BinaryExpression" ? `(${left})` : left;
-        const processedRight =
-          binary.right.type === "BinaryExpression" ? `(${right})` : right;
         return `${processedLeft} MOD ${processedRight}`;
       }
-      case "===":
-      case "!==":
+      case "===": {
+        console.error('"===" is unsupported and will be replaced with "=="');
+        return `${processedLeft} == ${processedRight}`;
+      }
+      case "!==": {
+        console.error('"!==" is unsupported and will be replaced with "!="');
+        return `${processedLeft} != ${processedRight}`;
+      }
       case "<<":
       case ">>":
       case ">>>":
