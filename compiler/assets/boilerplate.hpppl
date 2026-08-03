@@ -6,6 +6,8 @@ BEGIN
   LOCAL nextTick_ms := TICKS();
   RECT(#000000h);
 
+  INIT();
+
   WHILE true DO
     IF ISKEYDOWN(4) THEN
       KILL;
