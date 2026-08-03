@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/unified-signatures */
 
 type GraphicsObject = { __tag: "GraphicsObject" };
 export const G0: GraphicsObject;
@@ -84,6 +84,29 @@ export function RECT_P(
 export function MIN(x: number, y: number): number;
 export function MAX(x: number, y: number): number;
 
-export function REDIM(array: any[], dimension: number): void;
+// Probability
+// Random
+/**
+ * Returns a random integer between 0 and 1 (inclusive)
+ */
+export function RANDINT(): number;
+/**
+ * Returns a random integer between 0 and "to" (inclusive)
+ * @param { number } to
+ */
+export function RANDINT(to: number): number;
+/**
+ * Returns a random integer between "from" and "to" (inclusive)
+ * @param from
+ * @param to
+ */
+export function RANDINT(from: number, to: number): number;
+/**
+ * Returns numOutputs random integers between "from" and "to" (inclusive)
+ * @param from
+ * @param to
+ * @param numOutputs
+ */
+export function RANDINT(from: number, to: number, numOutputs: number): number[];
 
 export function ISKEYDOWN(key: number): boolean;
