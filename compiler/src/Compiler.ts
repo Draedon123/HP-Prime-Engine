@@ -542,11 +542,13 @@ class Compiler {
       case "UnaryExpression": {
         return this.transpileUnaryExpression(expression);
       }
+      case "LogicalExpression": {
+        return this.transpileLogicalExpression(expression);
+      }
       case "ThisExpression":
       case "ObjectExpression":
       case "FunctionExpression":
       case "UpdateExpression":
-      case "LogicalExpression":
       case "ConditionalExpression":
       case "NewExpression":
       case "SequenceExpression":
@@ -904,6 +906,33 @@ class Compiler {
           `Unsupported binary expression operator "${binary.operator}"`
         );
 
+        return null;
+      }
+    }
+  }
+
+  private transpileLogicalExpression(
+    expression: acorn.LogicalExpression
+  ): string | null {
+    const left = this.transpileExpression(expression.left);
+    const right = this.transpileExpression(expression.right);
+
+    if (left === null || right === null) {
+      return null;
+    }
+
+    switch (expression.operator) {
+      case "||": {
+        return `(${left}) OR (${right})`;
+      }
+      case "&&": {
+        return `(${left}) AND (${right})`;
+      }
+      case "??":
+      default: {
+        console.error(
+          `Unsupported logical expression operator "${expression.operator}"`
+        );
         return null;
       }
     }
