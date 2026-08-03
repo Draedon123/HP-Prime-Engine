@@ -878,7 +878,6 @@ class Compiler {
       case "-":
       case "*":
       case "==":
-      case "!=":
       case "<":
       case ">":
       case "<=":
@@ -895,7 +894,10 @@ class Compiler {
       }
       case "!==": {
         console.error('"!==" is unsupported and will be replaced with "!="');
-        return `${processedLeft} != ${processedRight}`;
+      }
+      // fallthrough
+      case "!=": {
+        return `NOT(${processedLeft} == ${processedRight})`;
       }
       case "<<":
       case ">>":
