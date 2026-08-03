@@ -617,7 +617,7 @@ class Compiler {
       ? (this.transpileExpression(statement.argument) ?? "")
       : "";
 
-    return `RETURN ${returnArgument}`;
+    return `RETURN${returnArgument !== "" ? " " + returnArgument : ""}`;
   }
 
   private transpileTry(statement: acorn.TryStatement): string {
