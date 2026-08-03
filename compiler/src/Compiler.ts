@@ -474,7 +474,7 @@ class Compiler {
       }
 
       case "const": {
-        declarationKeyword = "CONST";
+        declarationKeyword = "LOCAL";
         break;
       }
 
@@ -940,29 +940,29 @@ class Compiler {
       return null;
     }
 
-    let parentExpression = member.object;
-    let depth = 0;
+    const parentChain = [member.object];
 
-    while (parentExpression.type === "MemberExpression") {
-      parentExpression = parentExpression.object;
-      depth++;
+    while (parentChain[0].type === "MemberExpression") {
+      parentChain.unshift((parentChain[0] as acorn.MemberExpression).object);
+      parentChain[1] = (parentChain[1] as acorn.MemberExpression)
+        .property as acorn.Expression;
     }
 
-    if (
-      !this.namespaceImport.has(
-        (parentExpression.type === "Super"
-          ? this.transpileSuper(parentExpression)
-          : this.transpileExpression(parentExpression)) as string
-      )
-    ) {
-      return `${parent}[${property}]`;
+    const topLevelParent = parentChain[0];
+    const transpiledTopLevelParent = (
+      topLevelParent.type === "Super"
+        ? this.transpileSuper(topLevelParent)
+        : this.transpileExpression(topLevelParent)
+    ) as string;
+    if (!this.namespaceImport.has(transpiledTopLevelParent)) {
+      return `${transpiledTopLevelParent}[${[...parentChain.slice(1).map((parent) => (parent.type === "Super" ? this.transpileSuper(parent) : (this.transpileExpression(parent) as string))), property].join(", ")}]`;
     }
 
-    if (depth === 0) {
+    if (parentChain.length === 1) {
       return property;
     }
 
-    if (depth == 1) {
+    if (parentChain.length === 2) {
       switch (parent) {
         case "COLOURS": {
           // assume colour is hexadecimal
@@ -995,7 +995,7 @@ class Compiler {
       .filter((element) => element !== null)
       .join(",");
 
-    return `[${transpiledElements}]`;
+    return `{${transpiledElements}}`;
   }
 
   private transpileParenthesisedExpression(
