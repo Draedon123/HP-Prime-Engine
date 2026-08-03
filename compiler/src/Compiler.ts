@@ -829,21 +829,23 @@ class Compiler {
   private transpileUnaryExpression(
     expression: acorn.UnaryExpression
   ): string | null {
+    const transpiledArgument = this.transpileExpression(expression.argument);
+
+    if (transpiledArgument === null) {
+      return null;
+    }
+
     switch (expression.operator) {
       case "-":
       case "+": {
-        const transpiledArgument = this.transpileExpression(
-          expression.argument
-        );
-
-        if (transpiledArgument === null) {
-          return null;
-        }
-
         return `${expression.operator}${transpiledArgument}`;
       }
-      case "!":
-      case "~":
+      case "!": {
+        return `NOT(${transpiledArgument})`;
+      }
+      case "~": {
+        return `BITNOT(${transpiledArgument})`;
+      }
       case "typeof":
       case "void":
       case "delete": {
