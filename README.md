@@ -11,3 +11,9 @@ A game engine designed to make games for the HP Prime G2 Graphing Calculator. Co
 7. Open the connectivity kit application and create a new program on your calculator
 8. Paste the contents of `build.hpppl` into the new program and save
 9. Run the program
+
+# Demo
+
+Demo of compiled code running on a physical calculator:
+
+![Demo](demo.gif)
